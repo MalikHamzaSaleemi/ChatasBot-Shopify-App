@@ -1,0 +1,384 @@
+import {
+  Page,
+  Layout,
+  Text,
+  Card,
+  Button,
+  BlockStack,
+  Box,
+  Toast,
+  TextField,
+  Frame,
+  Spinner,
+  Modal,
+} from "@shopify/polaris";
+import { TitleBar } from "@shopify/app-bridge-react";
+import {
+  useFetcher,
+  useLoaderData,
+  useLocation,
+  useNavigate,
+} from "@remix-run/react";
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+import { authenticate } from "app/shopify.server";
+import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
+
+export const publicInstance = axios.create({
+  baseURL: `${process.env.SHOPIFY_DIALOG_PAY_SERVER_URI}/api/v1`,
+  headers: { "Content-Type": "application/json" },
+});
+
+
+/**
+ * 
+ * 
+ * 
+ * 
+ * ~ Loader function
+ */
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop_id = session.id;
+  try {
+    const response = await publicInstance.post(
+      "/shopify/app/integration-check",
+      { shop_id },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.SHOPIFY_CHATASBOT_TOKEN}`,
+        },
+      },
+    );
+    if (response.status === 200 && response.data.is_success) {
+      return Response.json({ data: response.data, error: null });
+    }
+    return Response.json({
+      data: null,
+      error: Array.isArray(response?.data?.message)
+        ? response?.data?.message[0]?.msg
+        : (response?.data?.message ?? "Integration check failed."),
+    });
+  } catch (error: any) {
+    const isReinstalled = error?.response?.data?.data?.is_reinstalled ?? false;
+    const errorMessage = error?.response?.data?.data?.message;
+    console.log(error);
+    return Response.json({
+      data: null,
+      error: errorMessage,
+      is_reinstalled: isReinstalled,
+    });
+  }
+};
+
+
+/**
+ * 
+ * 
+ * 
+ * 
+ * ~ action function
+ */
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop_id = session.id;
+  const formData = await request.formData();
+  const api_key = formData.get("api_key");
+
+  if (!api_key) {
+    return Response.json({
+      success: false,
+      message: "DialogPay API key is required.",
+    });
+  }
+
+  try {
+    const response = await publicInstance.post(
+      "/shopify/app/installed",
+      {
+        shop_id,
+        integration_token: api_key,
+        store_domain: session.shop,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.SHOPIFY_CHATASBOT_TOKEN}`,
+        },
+      },
+    );
+
+    if (response.status === 200 && response.data.is_success) {
+      return Response.json({
+        success: true,
+        data: response.data.data, // Make sure to return .data to match loader
+        error: null,
+      });
+    }
+    return Response.json({
+      success: false,
+      message: Array.isArray(response?.data?.message)
+        ? response?.data?.message[0]?.msg
+        : (response?.data?.message ?? "Manual integration failed."),
+      data: null,
+      error: Array.isArray(response?.data?.message)
+        ? response?.data?.message[0]?.msg
+        : (response?.data?.message ?? "Manual integration failed."),
+    });
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ??
+      error?.message ??
+      "Unexpected error during manual integration.";
+
+    return Response.json({ data: null, error: errorMessage });
+  }
+};
+
+
+/**
+ * 
+ * 
+ * 
+ * 
+ * ~ default component
+ */
+export default function Index() {
+  const {
+    data: loaderData,
+    error: loaderError,
+    is_reinstalled,
+  } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const statusFromUrl = searchParams.get("status");
+  const messageFromUrl = searchParams.get("message");
+
+  const [currentModalOpen, setCurrentModalOpen] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [toastContent, setToastContent] = useState<string | null>(null);
+  const [showReinstallModal, setShowReinstallModal] = useState(
+    is_reinstalled ?? false,
+  );
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setShowReinstallModal(is_reinstalled ?? false);
+  }, [is_reinstalled]);
+
+  useEffect(() => {
+    if (statusFromUrl && messageFromUrl) {
+      setToastContent(`${statusFromUrl}: ${messageFromUrl}`);
+      // Optionally remove query params from URL after showing
+      const url = new URL(window.location.href);
+      url.search = "";
+      window.history.replaceState({}, document.title, url.toString());
+    }
+  }, [statusFromUrl, messageFromUrl]);
+
+  const isSubmitting = fetcher.state === "submitting";
+  const integrationData = fetcher.data?.success
+    ? fetcher.data.data
+    : loaderData?.data;
+
+  const integrationError =
+    fetcher.data?.success === false
+      ? fetcher.data.message
+      : (loaderError ?? fetcher.data?.error);
+
+  useEffect(() => {
+    if (fetcher.data) {
+      setToastContent(
+        fetcher.data.success
+          ? "Integration successful!"
+          : (fetcher.data.message ?? "Failed to get the shop information. Please try again later or contact support."),
+      );
+      if (fetcher.data.success) {
+        setCurrentModalOpen(false);
+        setApiKey("");
+        // Force a reload of the loader data
+        // Alternatively, you could use useRevalidator() here
+        navigate(".", { replace: true });
+      }
+    }
+  }, [fetcher.data, navigate]);
+
+  const openReconnectModal = () => {
+    setApiKey("");
+    setCurrentModalOpen(true);
+  };
+
+  return (
+    <Frame>
+      <Page title="DialogPay" fullWidth>
+        <TitleBar title="DialogPay" />
+
+        <Layout>
+          <Layout.Section>
+            {/* Instruction Box */}
+            <Card >
+              <Text as="p" tone="critical" variant="bodyLg"><strong>Instructions:</strong></Text>
+              <Text as="p">
+
+                <ul>
+                  <li>
+                    Please <strong>register on the DialogPay platform</strong> to obtain your API key.
+                  </li>
+                  <li>
+                    After registration, go to the <strong>integration section</strong> of the DialogPay dashboard to find your <strong>DialogPay API Key</strong>.
+                  </li>
+                  <li>
+                    Paste the API key into the field below to complete the integration with Shopify.
+                  </li>
+                  <li>
+                    <strong>Note:</strong> The DialogPay API key is valid for only <strong>5 minutes</strong>, so please use it promptly.
+                  </li>
+                </ul>
+              </Text>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingMd">
+                  Integration Check
+                </Text>
+
+                {integrationData && (
+                  <Box
+                    padding="400"
+                    background="bg-surface-active"
+                    borderWidth="025"
+                    borderRadius="200"
+                    borderColor="border"
+                  >
+                    <Text as="h3" variant="headingSm">
+                      Current Integration Status
+                    </Text>
+                    <Text as="p">
+                      <strong>Status:</strong>{" "}
+                      {integrationData?.status ?? "N/A"}
+                    </Text>
+                    <Text as="p">
+                      <strong>Shop ID:</strong>{" "}
+                      {integrationData.shopify_plugin?.shop_id ?? "N/A"}
+                    </Text>
+                  </Box>
+                )}
+
+                {integrationError && !currentModalOpen && (
+                  <Text as="p" tone="critical">
+                    {integrationError}
+                  </Text>
+                )}
+                {integrationData ? (
+                  <Button onClick={openReconnectModal}>
+                    Reconnect with new API key
+                  </Button>
+                ) : (
+                  <fetcher.Form method="post">
+                    <BlockStack gap="300">
+                      <TextField
+                        name="api_key"
+                        label="DialogPay API Key"
+                        value={apiKey}
+                        onChange={setApiKey}
+                        autoComplete="off"
+                      />
+                      <Button
+                        submit
+                        disabled={isSubmitting}
+                        icon={
+                          isSubmitting ? (
+                            <Spinner
+                              size="small"
+                              accessibilityLabel="Loading"
+                            />
+                          ) : undefined
+                        }
+                      >
+                        {isSubmitting ? "Submitting..." : "Check Integration"}
+                      </Button>
+                    </BlockStack>
+                  </fetcher.Form>
+                )}
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+        </Layout>
+
+        {toastContent && (
+          <Toast
+            content={toastContent}
+            error={
+              toastContent?.toLowerCase()?.includes("fail") ||
+              toastContent?.toLowerCase()?.includes("error")
+            }
+            onDismiss={() => setToastContent(null)}
+          />
+        )}
+
+        <Modal
+          open={currentModalOpen}
+          onClose={() => setCurrentModalOpen(false)}
+          title="Reconnect DialogPay Integration"
+          primaryAction={{
+            content: isSubmitting ? "Submitting..." : "Submit",
+            onAction: () =>
+              document
+                .getElementById("reconnect-form")
+                ?.dispatchEvent(
+                  new Event("submit", { cancelable: true, bubbles: true }),
+                ),
+            loading: isSubmitting,
+          }}
+          secondaryActions={[
+            {
+              content: "Cancel",
+              onAction: () => setCurrentModalOpen(false),
+            },
+          ]}
+        >
+          <Modal.Section>
+            <fetcher.Form id="reconnect-form" method="post">
+              <BlockStack gap="300">
+                <TextField
+                  name="api_key"
+                  label="New DialogPay API Key"
+                  value={apiKey}
+                  onChange={setApiKey}
+                  autoComplete="off"
+                />
+              </BlockStack>
+            </fetcher.Form>
+          </Modal.Section>
+        </Modal>
+
+        <Modal
+          open={showReinstallModal}
+          onClose={() => setShowReinstallModal(false)}
+          title="Reinstallation Required"
+          primaryAction={{
+            content: "Refresh",
+            onAction: () =>
+              window.location.reload(),
+          }}
+          secondaryActions={[
+            {
+              content: "Close",
+              onAction: () => setShowReinstallModal(false),
+            },
+          ]}
+        >
+          <Modal.Section>
+            <Text as="p" tone="critical">
+              Please reinstall this app by clicking on top right three dots, or
+              Refresh the Page.
+            </Text>
+          </Modal.Section>
+        </Modal>
+      </Page>
+    </Frame>
+  );
+}

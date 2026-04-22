@@ -1,0 +1,56 @@
+{
+	"info": {
+		"_postman_id": "c61f238d-1941-4c91-9e11-bdc2c8f8b8a3",
+		"name": "ChatAsBot Shopify App Integrations",
+		"description": "Collection for testing the Shopify App connection hooks.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Trigger App Installed Hook",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{SHOPIFY_APP_TOKEN}}",
+						"type": "text",
+						"description": "Must match the SHOPIFY_CHATASBOT_TOKEN variable set in your backend .env file to authorize the request."
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"shop_id\": \"test_shop_12345ABC\",\n    \"integration_token\": \"<REPLACE_WITH_A_VALID_API_KEY_FROM_YOUR_DB>\",\n    \"store_domain\": \"my-test-store.myshopify.com\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/v1/shopify/app/installed",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"v1",
+						"shopify",
+						"app",
+						"installed"
+					]
+				},
+				"description": "Simulates the Shopify App hitting your backend to save its credentials after a user pastes in their API Key."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "SHOPIFY_APP_TOKEN",
+			"value": "ENTER_YOUR_SECURE_BEARER_TOKEN_HERE"
+		}
+	]
+}
