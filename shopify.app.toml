@@ -18,16 +18,9 @@ api_version = "2025-07"
   uri = "/webhooks/app/uninstalled"
 
   [[webhooks.subscriptions]]
-  topics = [ "checkouts/create", "checkouts/update" ]
-  uri = "/webhooks/checkouts"
-
-  [[webhooks.subscriptions]]
   uri = "https://cab.chatasbot.com/api/v1/shopify/webhook/compliance-topics"
   compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
 
-  [[webhooks.subscriptions]]
-  topics = [ "orders/create" ]
-  uri = "/webhooks/orders"
 
 [access.admin]
 direct_api_mode = "offline"
