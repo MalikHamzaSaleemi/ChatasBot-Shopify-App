@@ -1,0 +1,18 @@
+<!-- This will output the script tag pasted by the merchant -->
+{{ block.settings.widget_code }}
+
+{% schema %}
+{
+  "name": "ChatAsBot Widget",
+  "target": "body",
+  "settings": [
+    {
+      "type": "textarea",
+      "id": "widget_code",
+      "label": "Widget Code",
+      "info": "Paste the full <script> tag from your ChatAsBot dashboard here.",
+      "placeholder": "<script src=\"https://live.chatasbot.com/widget.js\" data-widget-id=\"...\" async></script>"
+    }
+  ]
+}
+{% endschema %}

@@ -10,11 +10,27 @@ automatically_update_urls_on_dev = true
 dev_store_url = "demossss-2.myshopify.com"
 
 [webhooks]
-api_version = "2026-04"
+api_version = "2025-01"
+
+  [[webhooks.subscriptions]]
+  uri = "/api/v1/shopify/webhook/compliance-topics"
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update", "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "checkouts/create", "checkouts/update" ]
+  uri = "/webhooks/checkouts"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create" ]
+  uri = "/webhooks/orders"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = "read_assigned_fulfillment_orders,write_assigned_fulfillment_orders,read_customers,write_customers,write_draft_orders,read_draft_orders,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,write_order_edits,read_order_edits,read_orders,write_orders,write_payment_terms,read_payment_customizations,write_payment_customizations,read_product_feeds,write_product_feeds,read_product_listings,write_product_listings"
+scopes = "read_assigned_fulfillment_orders,read_customers,read_draft_orders,read_merchant_managed_fulfillment_orders,read_order_edits,read_orders,read_payment_customizations,read_product_feeds,read_product_listings,write_assigned_fulfillment_orders,write_customers,write_draft_orders,write_merchant_managed_fulfillment_orders,write_order_edits,write_orders,write_payment_customizations,write_payment_terms,write_product_feeds,write_product_listings"
 optional_scopes = [
   "read_products",
   "write_products",
@@ -25,4 +41,8 @@ optional_scopes = [
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://cab.chatasbot.com/api/auth" ]
+redirect_urls = [
+  "https://cab.chatasbot.com/auth/callback",
+  "https://cab.chatasbot.com/auth/shopify/callback",
+  "https://cab.chatasbot.com/api/auth/callback"
+]

@@ -36,6 +36,10 @@ const shopify = shopifyApp({
       deliveryMethod: DeliveryMethod.Http,
       callbackUrl: "/webhooks/checkouts",
     },
+    "orders/create": {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/webhooks/orders",
+    },
   },
   hooks: {
     afterAuth: async ({ session }) => {
