@@ -43,15 +43,13 @@ const shopify = shopifyApp({
   },
   hooks: {
     afterAuth: async ({ session }) => {
-      // Force re-registration by updating the callback URL
-      console.log("👉 Attempting to register webhooks...");
-      const webhookRegistration = await shopify.registerWebhooks({ session });
-
+      console.log(`👉 Running afterAuth hook | {shop: ${session.shop}}`);
+      console.log(`👉 Attempting to register webhooks...`);
+      const registration = await shopify.registerWebhooks({ session });
       console.log("---------------------------------------------------");
       console.log("WEBHOOK REGISTRATION DETAILS:");
-      console.log(JSON.stringify(webhookRegistration, null, 2));
+      console.log(JSON.stringify(registration, null, 2));
       console.log("---------------------------------------------------");
-
       console.log(`✅ Webhooks registered successfully for shop: ${session.shop}`);
 
       // Manually check and upsert the session to ensure the latest access token is saved
@@ -91,7 +89,6 @@ const shopify = shopifyApp({
         console.error(`Failed to manually upsert session for shop ${session.shop}:`, error);
       }
 
-      await yourNodeServerCallback(session);  // Use offline token
     },
   },
   future: {

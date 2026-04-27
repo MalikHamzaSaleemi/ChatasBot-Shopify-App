@@ -117,6 +117,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shop_id,
         integration_token: api_key,
         store_domain: session.shop,
+        access_token: session.accessToken,
       },
       {
         headers: {
